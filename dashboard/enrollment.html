@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MDM Enrollment Stats Dashboard</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <!-- Shared styles -->
+  <link href="css/style.css" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ─── Header ──────────────────────────────────────────────────────────── -->
+  <header class="site-header px-4 py-3 d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-3">
+      <!-- Logo: add img/company-logo.png to your repo and replace the span below with:
+           <img src="img/company-logo.png" alt="Your Company" height="28" class="flex-shrink-0"> -->
+      <span class="fw-bold text-white fs-5">EDM Reporting</span>
+      <i class="bi bi-pc-display-horizontal fs-4 text-white"></i>
+      <span class="fs-5 fw-semibold text-white">MDM Enrollment Stats</span>
+      <!-- Nav -->
+      <nav class="d-flex gap-2 ms-3">
+        <a href="index.html" class="btn btn-sm btn-outline-light">
+          <i class="bi bi-shield-check me-1"></i>OS Compliance
+        </a>
+        <a href="enrollment.html" class="btn btn-sm btn-light text-navy fw-semibold">
+          <i class="bi bi-pc-display-horizontal me-1"></i>Enrollment
+        </a>
+        <a href="hardware.html" class="btn btn-sm btn-outline-light">
+          <i class="bi bi-cpu me-1"></i>Hardware
+        </a>
+        <a href="security.html" class="btn btn-sm btn-outline-light">
+          <i class="bi bi-shield-lock me-1"></i>Security
+        </a>
+        <a href="applications.html" class="btn btn-sm btn-outline-light">
+          <i class="bi bi-boxes me-1"></i>Applications
+        </a>
+      </nav>
+    </div>
+    <span class="text-white-50 small" id="last-updated">Loading&hellip;</span>
+  </header>
+
+  <main class="container-fluid py-4 px-4">
+
+    <!-- ─── Loading ─────────────────────────────────────────────────────── -->
+    <div id="loading-state" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status" aria-label="Loading"></div>
+      <p class="mt-3 text-muted">Fetching enrollment data&hellip;</p>
+    </div>
+
+    <!-- ─── Error ───────────────────────────────────────────────────────── -->
+    <div id="error-state" class="d-none">
+      <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>
+          <strong>No data available.</strong>
+          The CI pipeline may not have run yet, or all fetch jobs failed.
+          Trigger a pipeline on the <code>main</code> branch to populate data.
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Dashboard ───────────────────────────────────────────────────── -->
+    <div id="dashboard-content" class="d-none">
+
+      <!-- ─── Platform side-by-side ────────────────────────────────────────── -->
+      <div class="row g-4">
+
+        <!-- LEFT: Jamf Pro — macOS -->
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm h-100" id="jamf-card">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+              <div class="d-flex align-items-start justify-content-between">
+                <div>
+                  <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-apple me-2 text-muted"></i>Jamf Pro &mdash; macOS
+                  </h5>
+                  <small class="text-muted" id="jamf-subtitle">Loading&hellip;</small>
+                </div>
+                <span class="badge fs-6 px-3 py-2" id="jamf-badge">—</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <!-- Mini stat row -->
+              <div class="row g-2 mb-3" id="jamf-mini-stats"></div>
+              <!-- Business Unit Breakdown (Mac only, hidden until data loads) -->
+              <div class="d-none mb-3" id="business-units-section">
+                <p class="text-muted small mb-2 text-uppercase fw-semibold" style="letter-spacing:.05em;">Business Units</p>
+                <div class="row g-2" id="business-units-row"></div>
+              </div>
+              <!-- Chart -->
+              <p class="text-muted small mb-2 text-uppercase fw-semibold" style="letter-spacing:.05em;">Enrollments by Year</p>
+              <canvas id="jamfYearChart" style="max-height:260px;"></canvas>
+            </div>
+          </div>
+        </div><!-- /left col -->
+
+        <!-- RIGHT: Microsoft Intune — Windows -->
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm h-100" id="intune-card">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+              <div class="d-flex align-items-start justify-content-between">
+                <div>
+                  <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-windows me-2 text-muted"></i>Microsoft Intune &mdash; Windows
+                  </h5>
+                  <small class="text-muted" id="intune-subtitle">Loading&hellip;</small>
+                </div>
+                <span class="badge fs-6 px-3 py-2" id="intune-badge">—</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="intune-unavailable" class="d-flex align-items-center justify-content-center h-100">
+                <div class="text-center text-muted py-4">
+                  <i class="bi bi-clock fs-2 d-block mb-3 opacity-50"></i>
+                  <p class="mb-1 small">Windows enrollment data is not yet available.</p>
+                  <p class="mb-0 small">Trigger a pipeline on the <code>main</code> branch to populate data.</p>
+                </div>
+              </div>
+              <div id="intune-data" class="d-none">
+                <!-- Mini stat row -->
+                <div class="row g-2 mb-3" id="intune-mini-stats"></div>
+                <!-- Chart -->
+                <p class="text-muted small mb-2 text-uppercase fw-semibold" style="letter-spacing:.05em;">Enrollments by Year</p>
+                <canvas id="intuneYearChart" style="max-height:260px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div><!-- /right col -->
+
+      </div><!-- /platform side-by-side -->
+
+    </div><!-- /dashboard-content -->
+
+  </main>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- Dashboard logic -->
+  <script src="js/enrollment.js"></script>
+</body>
+</html>

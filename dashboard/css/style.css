@@ -1,0 +1,190 @@
+/* ─── Custom Font (optional) ──────────────────────────────────────────────── */
+/* Place your font files in dashboard/fonts/ and uncomment the @font-face     */
+/* block below, then add your font name at the start of the font-family list  */
+/* in the body rule further down.                                              */
+/*
+@font-face {
+  font-family: 'YourFont';
+  src: url('../fonts/YourFont-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+*/
+
+/* ─── Design Tokens ──────────────────────────────────────────────────────── */
+:root {
+  /* ── brand palette ── */
+  --red:           #FF4646;   /* primary accent — customise to match your brand */
+  --brand-primary: #140FCF;   /* secondary brand colour — customise as needed */
+  --espresso:      #2B1F1E;   /* primary dark */
+  --espresso-dark: #1A1210;   /* header gradient dark stop */
+  --nomad:         #7F746C;   /* mid-tone neutral */
+  --bone:          #EFEEEC;   /* light neutral */
+  --riverstone:    #C8C2B8;   /* border / divider */
+  --off-white:     #FDFDF8;   /* page background */
+
+  /* ── semantic ── */
+  --compliant:     #22c55e;
+  --at-risk:       #ef4444;
+  --warning:       #f59e0b;
+
+  /* ── legacy aliases used by charts and existing classes ── */
+  --navy:          #2B1F1E;
+  --navy-dark:     #1A1210;
+
+  --primary-soft:  rgba(255, 70,  70, 0.10);
+  --success-soft:  rgba(34,  197, 94, 0.12);
+  --danger-soft:   rgba(239, 68,  68, 0.12);
+  --warning-soft:  rgba(245, 158, 11, 0.12);
+  --info-soft:     rgba(59,  130, 246, 0.12);
+
+  --bg:            #FDFDF8;
+  --card-radius:   14px;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+body {
+  background-color: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.text-navy { color: var(--navy) !important; }
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+.site-header {
+  background: linear-gradient(135deg, var(--espresso-dark) 0%, var(--espresso) 100%);
+  border-bottom: 2px solid var(--red);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.30);
+}
+
+/* ─── Cards ──────────────────────────────────────────────────────────────── */
+.card {
+  border-radius: var(--card-radius) !important;
+}
+.card-header {
+  border-radius: var(--card-radius) var(--card-radius) 0 0 !important;
+}
+.card.stat-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10) !important;
+}
+
+/* ─── Stat Cells ─────────────────────────────────────────────────────────── */
+.stat-icon {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6c757d;
+}
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Soft backgrounds */
+.bg-primary-soft { background-color: var(--primary-soft); }
+.bg-success-soft { background-color: var(--success-soft); }
+.bg-danger-soft  { background-color: var(--danger-soft);  }
+.bg-warning-soft { background-color: var(--warning-soft); }
+.bg-info-soft    { background-color: var(--info-soft);    }
+
+/* ─── Donut Chart Wrapper ────────────────────────────────────────────────── */
+.chart-wrap {
+  position: relative;
+  width: 160px;
+  height: 160px;
+}
+.chart-wrap canvas {
+  width: 160px !important;
+  height: 160px !important;
+}
+.chart-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+.chart-center .pct {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.chart-center .sub {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6c757d;
+}
+
+/* ─── Platform Stats Mini Grid ───────────────────────────────────────────── */
+.mini-stat {
+  text-align: center;
+  border-radius: 8px;
+  padding: 0.5rem 0.25rem;
+}
+.mini-stat .num {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.mini-stat .lbl {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6c757d;
+}
+
+/* ─── Version Legend ─────────────────────────────────────────────────────── */
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  margin-bottom: 0.3rem;
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── Table ──────────────────────────────────────────────────────────────── */
+.table thead th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6c757d;
+  border-bottom-width: 2px;
+  white-space: nowrap;
+}
+.table td {
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+/* ─── Unavailable overlay on platform cards ──────────────────────────────── */
+.card-unavailable {
+  opacity: 0.55;
+}
