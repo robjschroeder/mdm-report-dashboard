@@ -1,0 +1,314 @@
+# ─── MDM Dashboard — GitHub Actions ──────────────────────────────────────────
+#
+# SCHEDULE: hourly on the hour (0 * * * *)
+# Runs automatically on push to main, on schedule, or manually via
+# Actions → Run workflow.
+#
+# REQUIRED SECRETS (Settings → Secrets and variables → Actions → Secrets):
+#
+#   Jamf Pro (OAuth API Client — Jamf Pro → Settings → API Roles and Clients):
+#     JAMF_URL              https://yourcompany.jamfcloud.com
+#     JAMF_CLIENT_ID        Jamf Pro API client ID
+#     JAMF_CLIENT_SECRET    Jamf Pro API client secret
+#
+#   Microsoft Intune (Entra App Registration):
+#     INTUNE_TENANT_ID      Azure AD / Entra tenant ID
+#     INTUNE_CLIENT_ID      App registration (client) ID
+#     INTUNE_CLIENT_SECRET  App registration client secret
+#
+# OPTIONAL SECRETS (leave unset to use defaults):
+#   JAMF_N_RULE                      Previous macOS minor releases counted as compliant (default: 2)
+#   JAMF_BUSINESS_UNITS              JSON: [{"name":"Group A","id":123}]  (omit to hide section)
+#   JAMF_SG_FV_ENCRYPTED             Smart group ID — FileVault encrypted
+#   JAMF_SG_FV_NOT_ENCRYPTED         Smart group ID — FileVault not encrypted
+#   JAMF_SG_CHECKIN_COMPLIANT        Smart group ID — recent check-in compliant
+#   JAMF_SG_CHECKIN_NONCOMPLIANT     Smart group ID — recent check-in non-compliant
+#   JAMF_SG_DEFENDER_COMPLIANT       Smart group ID — Microsoft Defender compliant
+#   JAMF_SG_DEFENDER_NONCOMPLIANT    Smart group ID — Microsoft Defender non-compliant
+#   JAMF_SG_PLATFORM_SSO_REGISTERED  Smart group ID — Platform SSO registered
+#   JAMF_SG_ENTRA_NOT_REGISTERED     Smart group ID — Entra ID not registered
+#   JAMF_SG_ENTRA_OLD_COMPLIANCE     Smart group ID — Entra ID old compliance record
+#   INTUNE_N_RULE                    Previous Windows feature releases counted as compliant (default: 2)
+#   INTUNE_MIN_WINDOWS_BUILD         Fallback minimum Windows build (default: 10.0.22621)
+#
+# GITHUB PAGES SETUP (one-time):
+#   Settings → Pages → Source → GitHub Actions
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: MDM Dashboard
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deploy at a time; don't cancel an in-progress run.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# ─── Fetch Jobs (all run in parallel) ────────────────────────────────────────
+
+jobs:
+
+  fetch-jamf:
+    name: Fetch — Jamf OS Compliance
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && bash scripts/jamf/get-os-compliance.sh
+        env:
+          JAMF_URL: ${{ secrets.JAMF_URL }}
+          JAMF_CLIENT_ID: ${{ secrets.JAMF_CLIENT_ID }}
+          JAMF_CLIENT_SECRET: ${{ secrets.JAMF_CLIENT_SECRET }}
+          JAMF_N_RULE: ${{ secrets.JAMF_N_RULE }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-jamf
+          path: data/jamf-os-compliance.json
+          if-no-files-found: ignore
+
+  fetch-jamf-enrollment:
+    name: Fetch — Jamf Enrollment Stats
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && bash scripts/jamf/get-enrollment-stats.sh
+        env:
+          JAMF_URL: ${{ secrets.JAMF_URL }}
+          JAMF_CLIENT_ID: ${{ secrets.JAMF_CLIENT_ID }}
+          JAMF_CLIENT_SECRET: ${{ secrets.JAMF_CLIENT_SECRET }}
+          JAMF_BUSINESS_UNITS: ${{ secrets.JAMF_BUSINESS_UNITS }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-jamf-enrollment
+          path: data/jamf-enrollment-stats.json
+          if-no-files-found: ignore
+
+  fetch-jamf-hardware:
+    name: Fetch — Jamf Hardware Stats
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && bash scripts/jamf/get-hardware-stats.sh
+        env:
+          JAMF_URL: ${{ secrets.JAMF_URL }}
+          JAMF_CLIENT_ID: ${{ secrets.JAMF_CLIENT_ID }}
+          JAMF_CLIENT_SECRET: ${{ secrets.JAMF_CLIENT_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-jamf-hardware
+          path: data/jamf-hardware-stats.json
+          if-no-files-found: ignore
+
+  fetch-jamf-security:
+    name: Fetch — Jamf Security Compliance
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && bash scripts/jamf/get-security-compliance.sh
+        env:
+          JAMF_URL: ${{ secrets.JAMF_URL }}
+          JAMF_CLIENT_ID: ${{ secrets.JAMF_CLIENT_ID }}
+          JAMF_CLIENT_SECRET: ${{ secrets.JAMF_CLIENT_SECRET }}
+          JAMF_SG_FV_ENCRYPTED: ${{ secrets.JAMF_SG_FV_ENCRYPTED }}
+          JAMF_SG_FV_NOT_ENCRYPTED: ${{ secrets.JAMF_SG_FV_NOT_ENCRYPTED }}
+          JAMF_SG_CHECKIN_COMPLIANT: ${{ secrets.JAMF_SG_CHECKIN_COMPLIANT }}
+          JAMF_SG_CHECKIN_NONCOMPLIANT: ${{ secrets.JAMF_SG_CHECKIN_NONCOMPLIANT }}
+          JAMF_SG_DEFENDER_COMPLIANT: ${{ secrets.JAMF_SG_DEFENDER_COMPLIANT }}
+          JAMF_SG_DEFENDER_NONCOMPLIANT: ${{ secrets.JAMF_SG_DEFENDER_NONCOMPLIANT }}
+          JAMF_SG_PLATFORM_SSO_REGISTERED: ${{ secrets.JAMF_SG_PLATFORM_SSO_REGISTERED }}
+          JAMF_SG_ENTRA_NOT_REGISTERED: ${{ secrets.JAMF_SG_ENTRA_NOT_REGISTERED }}
+          JAMF_SG_ENTRA_OLD_COMPLIANCE: ${{ secrets.JAMF_SG_ENTRA_OLD_COMPLIANCE }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-jamf-security
+          path: data/jamf-security-compliance.json
+          if-no-files-found: ignore
+
+  fetch-jamf-apps:
+    name: Fetch — Jamf App Inventory
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && bash scripts/jamf/get-app-inventory.sh
+        env:
+          JAMF_URL: ${{ secrets.JAMF_URL }}
+          JAMF_CLIENT_ID: ${{ secrets.JAMF_CLIENT_ID }}
+          JAMF_CLIENT_SECRET: ${{ secrets.JAMF_CLIENT_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-jamf-apps
+          path: data/jamf-app-inventory.json
+          if-no-files-found: ignore
+
+  fetch-intune:
+    name: Fetch — Intune OS Compliance
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && pwsh scripts/intune/get-os-compliance.ps1
+        env:
+          INTUNE_TENANT_ID: ${{ secrets.INTUNE_TENANT_ID }}
+          INTUNE_CLIENT_ID: ${{ secrets.INTUNE_CLIENT_ID }}
+          INTUNE_CLIENT_SECRET: ${{ secrets.INTUNE_CLIENT_SECRET }}
+          INTUNE_N_RULE: ${{ secrets.INTUNE_N_RULE }}
+          INTUNE_MIN_WINDOWS_BUILD: ${{ secrets.INTUNE_MIN_WINDOWS_BUILD }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-intune
+          path: data/intune-os-compliance.json
+          if-no-files-found: ignore
+
+  fetch-intune-enrollment:
+    name: Fetch — Intune Enrollment Stats
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && pwsh scripts/intune/get-enrollment-stats.ps1
+        env:
+          INTUNE_TENANT_ID: ${{ secrets.INTUNE_TENANT_ID }}
+          INTUNE_CLIENT_ID: ${{ secrets.INTUNE_CLIENT_ID }}
+          INTUNE_CLIENT_SECRET: ${{ secrets.INTUNE_CLIENT_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-intune-enrollment
+          path: data/intune-enrollment-stats.json
+          if-no-files-found: ignore
+
+  fetch-intune-hardware:
+    name: Fetch — Intune Hardware Stats
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && pwsh scripts/intune/get-hardware-report.ps1
+        env:
+          INTUNE_TENANT_ID: ${{ secrets.INTUNE_TENANT_ID }}
+          INTUNE_CLIENT_ID: ${{ secrets.INTUNE_CLIENT_ID }}
+          INTUNE_CLIENT_SECRET: ${{ secrets.INTUNE_CLIENT_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-intune-hardware
+          path: data/intune-hardware-stats.json
+          if-no-files-found: ignore
+
+  fetch-intune-security:
+    name: Fetch — Intune Security Compliance
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && pwsh scripts/intune/get-security-compliance.ps1
+        env:
+          INTUNE_TENANT_ID: ${{ secrets.INTUNE_TENANT_ID }}
+          INTUNE_CLIENT_ID: ${{ secrets.INTUNE_CLIENT_ID }}
+          INTUNE_CLIENT_SECRET: ${{ secrets.INTUNE_CLIENT_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-intune-security
+          path: data/intune-security-compliance.json
+          if-no-files-found: ignore
+
+  fetch-intune-apps:
+    name: Fetch — Intune App Inventory
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run script
+        run: mkdir -p data && pwsh scripts/intune/get-app-inventory.ps1
+        env:
+          INTUNE_TENANT_ID: ${{ secrets.INTUNE_TENANT_ID }}
+          INTUNE_CLIENT_ID: ${{ secrets.INTUNE_CLIENT_ID }}
+          INTUNE_CLIENT_SECRET: ${{ secrets.INTUNE_CLIENT_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-intune-apps
+          path: data/intune-app-inventory.json
+          if-no-files-found: ignore
+
+  # ─── Deploy to GitHub Pages ──────────────────────────────────────────────────
+  # Runs even if some fetch jobs failed — the dashboard handles missing data files.
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: ${{ !cancelled() }}
+    needs:
+      - fetch-jamf
+      - fetch-jamf-enrollment
+      - fetch-jamf-hardware
+      - fetch-jamf-security
+      - fetch-jamf-apps
+      - fetch-intune
+      - fetch-intune-enrollment
+      - fetch-intune-hardware
+      - fetch-intune-security
+      - fetch-intune-apps
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all data artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: data-*
+          path: artifacts/
+          merge-multiple: false
+
+      - name: Build site
+        run: |
+          mkdir -p public/data
+          cp -r dashboard/. public/
+          # Flatten all downloaded JSON files into public/data/
+          find artifacts/ -name '*.json' -exec cp {} public/data/ \;
+          echo "Data files copied:"
+          ls public/data/ 2>/dev/null || echo "  (none)"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
